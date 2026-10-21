@@ -1,0 +1,746 @@
+<!doctype html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1D5C9E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font-size:14px}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>TCM Animation</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600&display=swap">
+</head><body>
+<style>
+/* Layout: one-column phone app; each match is drawn as a little blue hard court with its net, players on either side */
+:root{
+  --bg:#EEF2F5; --surface:#FFFFFF; --ink:#12263A; --muted:#5A6C7E; --line:#D3DCE4;
+  --court:#1D5C9E; --court-2:#174C84; --chalk:#FFFFFF; --ball:#CFE04A; --ball-ink:#273000;
+  --ok:#24804F; --danger:#B3261E;
+  --display:"Barlow Condensed","Arial Narrow",system-ui,sans-serif;
+  --body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D1721; --surface:#15222E; --ink:#E5EDF4; --muted:#92A5B7; --line:#283A4A;
+  --court:#1F5797; --court-2:#18467A; --chalk:#F2F6FA; --ball:#D4E55A; --ball-ink:#222A00;
+  --ok:#5CC48A; --danger:#F08A82; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D1721; --surface:#15222E; --ink:#E5EDF4; --muted:#92A5B7; --line:#283A4A;
+  --court:#1F5797; --court-2:#18467A; --chalk:#F2F6FA; --ball:#D4E55A; --ball-ink:#222A00;
+  --ok:#5CC48A; --danger:#F08A82; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:16px;line-height:1.45}
+#app{max-width:760px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 48px}
+h1,h2,h3{font-family:var(--display);letter-spacing:.01em;text-wrap:balance;margin:0;line-height:1.1}
+h1{font-size:2rem;text-transform:uppercase}
+h2{font-size:1.35rem;text-transform:uppercase}
+h3{font-size:1.1rem}
+.eyebrow{font-size:.75rem;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.muted{color:var(--muted)}
+.stack{display:flex;flex-direction:column;gap:12px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.top{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding-block:8px 16px;border-bottom:3px solid var(--ink);margin-bottom:16px}
+.top .ballmark{width:34px;height:34px;border-radius:50%;background:var(--ball);position:relative;flex:none;overflow:hidden}
+.top .ballmark::before,.top .ballmark::after{content:"";position:absolute;width:34px;height:34px;border:2px solid var(--surface);border-radius:50%}
+.top .ballmark::before{left:-22px}.top .ballmark::after{right:-22px}
+button{font:inherit;font-weight:600;border-radius:10px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);padding:10px 14px;cursor:pointer;min-height:44px}
+button:disabled{opacity:.45;cursor:default}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:3px solid var(--ball);outline-offset:2px}
+.btn-main{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn-ball{background:var(--ball);color:var(--ball-ink);border-color:var(--ball)}
+.btn-ghost{background:transparent;border-color:transparent;padding-inline:6px;color:var(--muted)}
+.btn-danger{color:var(--danger);border-color:var(--danger);background:transparent}
+.btn-sm{min-height:36px;padding:6px 10px;font-size:.9rem}
+label.f{display:flex;flex-direction:column;gap:4px;font-weight:600;font-size:.9rem}
+input[type=text],input[type=date],input[type=number],select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;min-height:44px;width:100%;box-sizing:border-box}
+textarea{min-height:120px;resize:vertical}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:420px){.grid2{grid-template-columns:1fr}}
+.anim-card{display:flex;justify-content:space-between;align-items:center;gap:12px;text-align:left;width:100%;padding:14px 16px;border-radius:14px}
+.anim-card .t{font-family:var(--display);font-size:1.3rem;font-weight:700}
+.anim-card .n{font-family:var(--display);font-size:1.6rem;font-weight:700;font-variant-numeric:tabular-nums;text-align:right;line-height:1}
+.anim-card .n small{display:block;font-family:var(--body);font-size:.7rem;font-weight:500;color:var(--muted);letter-spacing:.06em;text-transform:uppercase}
+.tabs{display:flex;gap:4px;overflow-x:auto;margin-block:12px 16px;border-bottom:1.5px solid var(--line)}
+.tabs button{border:none;border-radius:0;background:none;color:var(--muted);border-bottom:3px solid transparent;margin-bottom:-1.5px;white-space:nowrap;padding-inline:12px;font-family:var(--display);font-size:1.1rem;text-transform:uppercase;letter-spacing:.03em}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--ball)}
+.bar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.kpis{display:flex;gap:16px;font-variant-numeric:tabular-nums}
+.kpis b{font-family:var(--display);font-size:1.5rem;display:block;line-height:1}
+.kpis span{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.defi-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--surface);border:1px solid var(--line);border-left:6px solid var(--ball);border-radius:12px;padding:10px 12px;margin-bottom:14px}
+.defi-bar select{flex:1 1 200px;width:auto}
+.courts{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px}
+@media (max-width:360px){.courts{grid-template-columns:1fr}}
+.court{background:var(--court);color:var(--chalk);border-radius:14px;padding:10px;display:flex;flex-direction:column;gap:10px}
+.court.over{box-shadow:0 0 0 4px var(--ball)}
+.court.over .chip{background:var(--danger);color:#fff}
+@media (prefers-reduced-motion:no-preference){.court.over{animation:pulse 1.2s ease-in-out infinite}}
+@keyframes pulse{50%{box-shadow:0 0 0 8px var(--ball)}}
+.dur{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.dur b{margin-right:4px}
+.dur button{min-height:38px;padding:6px 12px;font-size:.95rem;font-variant-numeric:tabular-nums}
+.dur button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.nx{display:flex;align-items:center;gap:12px}
+.nx .rank{flex:none;width:34px;height:34px;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;font-family:var(--display);font-weight:700;font-size:1.2rem}
+.nx.first{background:color-mix(in srgb,var(--ball) 28%,var(--surface))}
+.nx.first .rank{background:var(--ball);color:var(--ball-ink)}
+.court.next{background:var(--surface);color:var(--ink);border:1.5px dashed var(--line)}
+.court-head{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.court-num{font-family:var(--display);font-size:1.25rem;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.chip{font-size:.75rem;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--ball);color:var(--ball-ink);white-space:nowrap;font-variant-numeric:tabular-nums}
+.court.next .chip{background:var(--bg);color:var(--muted)}
+.surface{border:2px solid var(--chalk);border-radius:4px;background:var(--court-2);display:grid;grid-template-rows:1fr auto 1fr;min-height:110px}
+.side{display:flex;align-items:center;justify-content:center;text-align:center;padding:10px 8px;font-family:var(--display);font-size:1.35rem;font-weight:600;line-height:1.15;min-width:0;overflow-wrap:anywhere}
+.net{height:0;border-top:2px dashed var(--chalk);position:relative}
+.net span{position:absolute;right:6px;top:-9px;font-size:.65rem;letter-spacing:.12em;background:var(--court-2);padding-inline:4px;text-transform:uppercase}
+.next-line{font-family:var(--display);font-size:1.25rem;font-weight:600;line-height:1.2}
+.next-line .vs{font-family:var(--body);font-size:.85rem;color:var(--muted);font-weight:500;margin-inline:6px}
+.defi-tag{display:flex;flex-direction:column;gap:6px;background:rgba(255,255,255,.12);border-radius:10px;padding:8px 10px}
+.court.next .defi-tag{background:var(--bg)}
+.defi-tag .lbl{font-size:.7rem;letter-spacing:.12em;text-transform:uppercase;font-weight:600;opacity:.85}
+.defi-tag .txt{font-weight:600}
+.defi-tag select{background:rgba(255,255,255,.95);color:#12263A;min-height:38px;padding:6px 10px}
+.court.next .defi-tag select{background:var(--surface);color:var(--ink)}
+.check{display:flex;align-items:center;gap:8px;font-weight:600;min-height:40px;cursor:pointer}
+.check input{width:22px;height:22px;accent-color:var(--ball);flex:none}
+.counter{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.counter .lab{font-weight:600;flex:1 1 140px}
+.counter button{width:44px;height:44px;padding:0;border-radius:50%;font-size:1.4rem;line-height:1}
+.counter b{font-family:var(--display);font-size:1.8rem;min-width:1.4em;text-align:center;font-variant-numeric:tabular-nums}
+.back-btn{display:flex;align-items:center;justify-content:center;gap:10px;background:var(--ball)!important;color:var(--ball-ink)!important;border-color:var(--ball)!important;font-size:1.05rem;min-height:50px}
+.back-btn i{width:22px;height:22px;border:2.5px solid var(--ball-ink);border-radius:6px;display:inline-block}
+.court button{border-color:rgba(255,255,255,.4);background:transparent;color:var(--chalk)}
+.court.next button{border-color:var(--line);color:var(--ink)}
+.result{display:flex;flex-direction:column;gap:8px}
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg button{flex:1 1 auto;min-height:38px;padding:6px 10px;font-size:.9rem}
+.seg button[aria-pressed=true]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.bench{display:flex;flex-wrap:wrap;gap:6px}
+.pill{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 10px;font-weight:500;font-size:.92rem}
+.pill b{font-family:var(--display);font-variant-numeric:tabular-nums;background:var(--bg);border-radius:999px;padding:0 7px}
+.pill.away{opacity:.5;text-decoration:line-through}
+.list{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+.list>*{padding:12px 14px;border-top:1px solid var(--line)}
+.list>*:first-child{border-top:none}
+.li{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.li .grow{min-width:0;flex:1}
+.toggle{display:flex;align-items:center;gap:6px;font-size:.9rem;font-weight:600}
+.toggle input{width:22px;height:22px;accent-color:var(--ok)}
+.radio{display:flex;align-items:center;gap:6px;font-size:.85rem;font-weight:600;white-space:nowrap}
+.radio input{width:20px;height:20px;accent-color:var(--ok)}
+.li.current{background:color-mix(in srgb,var(--ball) 22%,var(--surface))}
+.done-match .who{font-weight:600}
+.done-match .who .w{color:var(--ok)}
+.ok{color:var(--ok);font-weight:600}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:14px;background:var(--surface)}
+table{border-collapse:collapse;font-variant-numeric:tabular-nums;width:100%}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}
+th{font-size:.75rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+td.num,th.num{text-align:right}
+tr.click{cursor:pointer}
+tr.open td{background:var(--bg)}
+.detail td{white-space:normal;background:var(--bg);font-size:.92rem}
+.matrix th.v{writing-mode:vertical-rl;transform:rotate(180deg);text-transform:none;letter-spacing:0;font-size:.82rem;color:var(--ink);padding:8px 4px;vertical-align:bottom;max-height:160px;white-space:normal}
+.matrix td{text-align:center;padding:6px 4px;min-width:26px}
+.matrix td.z{color:var(--line)}
+.matrix td.h1{background:color-mix(in srgb,var(--court) 18%,transparent)}
+.matrix td.h2{background:color-mix(in srgb,var(--court) 40%,transparent);font-weight:700}
+.matrix td.g1{background:color-mix(in srgb,var(--ok) 20%,transparent)}
+.matrix td.g2{background:color-mix(in srgb,var(--ok) 42%,transparent);font-weight:700}
+.matrix td.self{background:var(--bg)}
+.matrix td.tot{font-weight:700;border-left:1.5px solid var(--line)}
+.matrix th.rowh{position:sticky;left:0;background:var(--surface);color:var(--ink);text-transform:none;letter-spacing:0;font-size:.85rem}
+.empty{text-align:center;padding:28px 16px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-weight:600;z-index:20;max-width:calc(100% - 32px)}
+.note{font-size:.85rem;color:var(--muted)}
+.court .note{color:inherit;opacity:.8}
+</style>
+
+<div id="app"></div>
+<div id="toast" class="toast" hidden></div>
+
+<script src="config.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script>
+(function(){
+const FORMATS={
+  bo3:"2 sets gagnants",
+  tb7:"Tie-break en 7 points",
+  tb10:"Tie-break en 10 points",
+  court:"2 jeux gagnants, point décisif, tie-break en 2 points d'écart",
+  defis:"Défis à valider (sans compter les points)",
+  libre:"Jeu libre (sans points ni défi)"
+};
+const FORMAT_SHORT={bo3:"2 sets gagnants",tb7:"TB 7 pts",tb10:"TB 10 pts",court:"2 jeux · point décisif",defis:"Défis",libre:"Jeu libre"};
+const LS_KEY="tennis-animations-v1";
+
+let store={animations:{}};
+let view={animId:null,tab:"matchs",creating:false,openPlayer:null,editMatch:null,confirmDel:null};
+let db=null;
+const dirty={}, timers={}, chains={}, knownRemote=new Set();
+
+const $app=document.getElementById("app");
+const uid=()=>Math.random().toString(36).slice(2,9)+Date.now().toString(36).slice(-4);
+const esc=s=>String(s==null?"":s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const today=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0")};
+const fmtDate=s=>{if(!s)return"";const [y,m,d]=s.split("-");return d+"/"+m+"/"+y};
+const plural=(n,w)=>n+" "+w+(n>1?"s":"");
+
+function toast(msg){const t=document.getElementById("toast");t.textContent=msg;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(()=>t.hidden=true,3200)}
+
+/* ---------- persistence (Supabase) ---------- */
+let sb=null, online=false, needLogin=false, userEmail="";
+function loadLocal(){try{const raw=localStorage.getItem(LS_KEY);if(raw){const p=JSON.parse(raw);if(p&&p.animations)store=p}}catch(e){}}
+function saveLocal(){try{localStorage.setItem(LS_KEY,JSON.stringify(store))}catch(e){}}
+function commit(a){a.updatedAt=Date.now();store.animations[a.id]=a;saveLocal();queueDb(a.id);render()}
+function queueDb(id){
+  if(!online)return;
+  dirty[id]=true;
+  clearTimeout(timers[id]);
+  timers[id]=setTimeout(()=>{timers[id]=null;chains[id]=(chains[id]||Promise.resolve()).then(()=>writeDoc(id,0))},500);
+}
+async function writeDoc(id,attempt){
+  const a=store.animations[id];
+  const r=a
+    ? await sb.from("animations").upsert({id,data:a,updated_at:new Date().toISOString()})
+    : await sb.from("animations").delete().eq("id",id);
+  if(!r.error){if(!timers[id])dirty[id]=false;return}
+  if(attempt<2){await new Promise(res=>setTimeout(res,1500+Math.random()*1500));return writeDoc(id,attempt+1)}
+  toast("Pas de connexion à la base : les données restent sur ce téléphone et repartiront à la prochaine modification.");
+}
+function applyRemote(rows,first){
+  let changed=false;const seen=new Set();
+  rows.forEach(r=>{
+    seen.add(r.id);knownRemote.add(r.id);
+    if(dirty[r.id]||!r.data)return;
+    const cur=store.animations[r.id];
+    if(!cur||(r.data.updatedAt||0)>(cur.updatedAt||0)){store.animations[r.id]=r.data;changed=true}
+  });
+  if(first)Object.keys(store.animations).forEach(id=>{if(!seen.has(id)&&!dirty[id])queueDb(id)});
+  if(changed){saveLocal();render()}
+}
+async function connectDb(){
+  const cfg=window.TCM_CONFIG||{};
+  if(!cfg.supabaseUrl||!cfg.supabaseAnonKey||!window.supabase){toast("Supabase n'est pas configuré : les données restent sur ce téléphone.");return}
+  sb=window.supabase.createClient(cfg.supabaseUrl,cfg.supabaseAnonKey,{auth:{persistSession:true,autoRefreshToken:true}});
+  const {data}=await sb.auth.getSession();
+  if(!data||!data.session){needLogin=true;render();return}
+  startSync(data.session);
+}
+async function startSync(session){
+  needLogin=false;userEmail=(session&&session.user&&session.user.email)||"";
+  online=true;
+  const {data,error}=await sb.from("animations").select("id,data");
+  if(error){online=false;toast("Base injoignable pour l'instant : tu travailles sur les données du téléphone.");render();return}
+  applyRemote(data,true);
+  sb.channel("tcm-animations").on("postgres_changes",{event:"*",schema:"public",table:"animations"},p=>{
+    if(p.eventType==="DELETE"){
+      const id=p.old&&p.old.id;
+      if(id&&!dirty[id]&&store.animations[id]){delete store.animations[id];saveLocal();if(view.animId===id)view.animId=null;render()}
+    }else if(p.new)applyRemote([p.new],false);
+  }).subscribe();
+  render();
+}
+function renderLogin(){
+  return `<header class="top"><div><div class="eyebrow">Tennis Club · animations</div><h1>TCM Animation</h1></div><div class="ballmark" aria-hidden="true"></div></header>
+  <form class="panel stack" id="login-form">
+    <h2>Connexion</h2>
+    <label class="f">E-mail<input type="email" id="l-email" autocomplete="username" required style="font:inherit;min-height:44px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface);color:var(--ink)"></label>
+    <label class="f">Mot de passe<input type="password" id="l-pass" autocomplete="current-password" required style="font:inherit;min-height:44px;border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--surface);color:var(--ink)"></label>
+    <div><button type="submit" class="btn-main">Se connecter</button></div>
+    <p class="note">Le compte est créé par l'administrateur du club dans Supabase. Une fois connecté, tu restes connecté sur ce téléphone.</p>
+  </form>`;
+}
+document.addEventListener("submit",async e=>{
+  if(e.target.id!=="login-form")return;
+  e.preventDefault();e.stopPropagation();
+  const {data,error}=await sb.auth.signInWithPassword({email:document.getElementById("l-email").value.trim(),password:document.getElementById("l-pass").value});
+  if(error){toast("E-mail ou mot de passe incorrect.");return}
+  startSync(data.session);
+},true);
+document.addEventListener("click",async e=>{
+  if(!e.target.closest('[data-act="logout"]'))return;
+  await sb.auth.signOut();online=false;needLogin=true;render();
+});
+
+/* ---------- domain ---------- */
+function norm(a){
+  if(a.live==null)a.live=6;
+  if(a.queue==null)a.queue=2;
+  if(a.duration===undefined)a.duration=null;
+  a.defis=a.defis||[];
+  if(a.currentDefi&&!a.defis.some(d=>d.id===a.currentDefi))a.currentDefi=null;
+  a.matches=(a.matches||[]).filter(m=>m.status!=="cancelled");
+  a.matches.forEach(m=>{if(m.defiId===undefined)m.defiId=null;if(m.defiCount==null)m.defiCount=m.defiOk?1:0;if(m.defiCount>1)m.defiCount=1});
+  return a;
+}
+const anim=()=>{const a=store.animations[view.animId];return a?norm(a):a};
+const pName=(a,id)=>{const p=a.players.find(x=>x.id===id);return p?p.name:"?"};
+const team=(a,ids)=>ids.map(id=>pName(a,id)).join(" / ");
+const pairKey=(x,y)=>x<y?x+"|"+y:y+"|"+x;
+const need=a=>a.type==="double"?4:2;
+const defiText=(a,id)=>{const d=a.defis.find(x=>x.id===id);return d?d.text:""};
+
+function newAnimation(o){
+  return {id:uid(),name:o.name,date:o.date,type:o.type,format:o.format,live:o.live,queue:o.queue,
+    players:o.names.map(n=>({id:uid(),name:n,present:true})),defis:[],currentDefi:null,matches:[],seq:0,createdAt:Date.now(),updatedAt:Date.now()};
+}
+function tally(a,statuses){
+  const played={},met={},partner={},wins={},defis={},defisBy={};
+  a.players.forEach(p=>{played[p.id]=0;wins[p.id]=0;defis[p.id]=0;defisBy[p.id]={}});
+  a.matches.forEach(m=>{
+    if(!statuses.includes(m.status))return;
+    const all=m.a.concat(m.b);
+    all.forEach(id=>{played[id]=(played[id]||0)+1});
+    m.a.forEach(x=>m.b.forEach(y=>{const k=pairKey(x,y);met[k]=(met[k]||0)+1}));
+    [m.a,m.b].forEach(t=>{if(t.length===2){const k=pairKey(t[0],t[1]);partner[k]=(partner[k]||0)+1}});
+    if(m.winner==="A")m.a.forEach(id=>wins[id]=(wins[id]||0)+1);
+    if(m.winner==="B")m.b.forEach(id=>wins[id]=(wins[id]||0)+1);
+    const dc=m.defiId?(m.defiCount||0):0;if(dc)all.forEach(id=>{defis[id]=(defis[id]||0)+dc;if(defisBy[id])defisBy[id][m.defiId]=(defisBy[id][m.defiId]||0)+dc});
+  });
+  return {played,met,partner,wins,defis,defisBy};
+}
+const byStatus=(a,s)=>a.matches.filter(m=>m.status===s).sort((x,y)=>x.seq-y.seq);
+function engaged(a){const s=new Set();a.matches.forEach(m=>{if(m.status==="planned"||m.status==="playing")m.a.concat(m.b).forEach(id=>s.add(id))});return s}
+function available(a){const e=engaged(a);return a.players.filter(p=>p.present&&!p.removed&&!e.has(p.id))}
+const active=a=>a.players.filter(p=>!p.removed);
+/* A paused or removed player leaves the upcoming matches; those matches are redrawn */
+function dropFromPlanned(a,pid){
+  const hit=a.matches.filter(m=>m.status==="planned"&&m.a.concat(m.b).includes(pid));
+  if(!hit.length)return 0;
+  a.matches=a.matches.filter(m=>!hit.includes(m));
+  refill(a);
+  return hit.length;
+}
+function isPlaying(a,pid){return a.matches.some(m=>m.status==="playing"&&m.a.concat(m.b).includes(pid))}
+function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
+function combos(arr,k){const out=[];(function rec(start,cur){if(cur.length===k){out.push(cur.slice());return}for(let i=start;i<arr.length;i++){cur.push(arr[i]);rec(i+1,cur);cur.pop()}})(0,[]);return out}
+
+/* Draw one match: start from a player who has played least, pair her with others who have also played least, avoiding repeat meetings */
+function drawMatch(a){
+  const k=need(a);
+  const t=tally(a,["planned","playing","done"]);
+  let pool=shuffle(available(a).map(p=>p.id));
+  if(pool.length<k)return null;
+  pool.sort((x,y)=>t.played[x]-t.played[y]);
+  const min=t.played[pool[0]];
+  let cands=pool.filter(id=>t.played[id]<=min+1);
+  if(cands.length<k)cands=pool.slice(0,Math.max(k,8));
+  cands=cands.slice(0,12);
+  const first=cands[0];const rest=cands.slice(1);
+  const met=(x,y)=>t.met[pairKey(x,y)]||0, par=(x,y)=>t.partner[pairKey(x,y)]||0;
+  let best=null,bestCost=Infinity;
+  combos(rest,k-1).forEach(c=>{
+    const load=c.reduce((s,id)=>s+(t.played[id]-min),0)*2;
+    let splits;
+    if(k===2)splits=[[[first],[c[0]]]];
+    else{const [x,y,z]=c;splits=[[[first,x],[y,z]],[[first,y],[x,z]],[[first,z],[x,y]]]}
+    splits.forEach(([A,B])=>{
+      let rep=0;A.forEach(p=>B.forEach(q=>rep+=met(p,q)*5));
+      if(A.length===2)rep+=par(A[0],A[1])*4+par(B[0],B[1])*4;
+      const cost=load+rep+Math.random()*0.9;
+      if(cost<bestCost){bestCost=cost;best={a:A,b:B}}
+    });
+  });
+  return best;
+}
+function addMatch(a,status){
+  const d=drawMatch(a);if(!d)return false;
+  a.seq=(a.seq||0)+1;
+  a.matches.push({id:uid(),a:d.a,b:d.b,status,seq:a.seq,winner:null,score:"",defiId:a.format==="defis"?(a.currentDefi||null):null,defiCount:0,startedAt:status==="playing"?Date.now():null,endedAt:null});
+  return true;
+}
+/* Keep `live` matches on court (taking the next planned match first) and at least `queue` matches planned */
+function refill(a){
+  let guard=0;
+  while(byStatus(a,"playing").length<a.live&&guard++<50){
+    const nx=byStatus(a,"planned")[0];
+    if(nx){nx.status="playing";nx.startedAt=Date.now();continue}
+    if(!addMatch(a,"playing"))break;
+  }
+  planQueue(a);
+}
+/* Put every resting player into an upcoming match. The next match to go stays fixed; the others are redrawn
+   together with whoever just came back, keeping the draw with the fewest repeat meetings out of several tries. */
+function planQueue(a){
+  const locked=byStatus(a,"planned")[0];
+  const base=a.matches.filter(m=>m.status!=="planned"||m===locked);
+  const seq0=a.seq||0;
+  const t=tally(a,["playing","done"]);
+  let best=null,bestCost=Infinity;
+  for(let i=0;i<40;i++){
+    a.matches=base.slice();a.seq=seq0;
+    const added=[];let guard=0;
+    while(guard++<30&&addMatch(a,"planned"))added.push(a.matches[a.matches.length-1]);
+    let cost=0;
+    added.forEach(m=>{
+      m.a.forEach(x=>m.b.forEach(y=>cost+=(t.met[pairKey(x,y)]||0)*5));
+      [m.a,m.b].forEach(tm=>{if(tm.length===2)cost+=(t.partner[pairKey(tm[0],tm[1])]||0)*4});
+    });
+    if(cost<bestCost){bestCost=cost;best={matches:a.matches.slice(),seq:a.seq}}
+    if(cost===0)break;
+  }
+  a.matches=best.matches;a.seq=best.seq;
+}
+const canRefill=a=>(byStatus(a,"playing").length<a.live||available(a).length>=need(a))&&available(a).length>=need(a);
+
+/* ---------- rendering ---------- */
+function render(){
+  if(needLogin){$app.innerHTML=renderLogin();return}
+  const y=window.scrollY;
+  if(view.animId&&anim())$app.innerHTML=renderAnim(anim());
+  else{view.animId=null;$app.innerHTML=renderHome()}
+  window.scrollTo(0,y);
+}
+function renderHome(){
+  const list=Object.values(store.animations).map(norm).sort((x,y)=>(y.date||"").localeCompare(x.date||"")||y.createdAt-x.createdAt);
+  let h=`<header class="top"><div><div class="eyebrow">Tennis Club · animations</div><h1>TCM Animation</h1></div><div class="ballmark" aria-hidden="true"></div></header><div class="stack">`;
+  h+=view.creating?renderCreate():`<button class="btn-ball" data-act="new">+ Nouvelle animation</button>`;
+  if(!list.length&&!view.creating){
+    h+=`<div class="panel empty stack"><h2>Aucune animation pour l'instant</h2><p class="muted">Crée ta première animation : nom, participants, simple ou double et format des matchs. L'appli lance les premiers matchs, garde toujours des matchs d'avance et fait jouer en priorité celles qui ont le moins joué.</p><div><button data-act="example">Voir un exemple avec 20 joueuses fictives</button></div></div>`;
+  }
+  list.forEach(a=>{
+    const nm=byStatus(a,"done").length;
+    h+=`<button class="anim-card" data-act="open" data-id="${a.id}"><div style="min-width:0;flex:1"><div class="t">${esc(a.name)}</div><div class="muted">${fmtDate(a.date)} · ${a.type==="double"?"Double":"Simple"} · ${esc(FORMAT_SHORT[a.format])}</div></div><div class="n">${a.players.length}<small>inscrits</small></div><div class="n">${nm}<small>matchs</small></div></button>`;
+  });
+  if(sb&&online)h+=`<p class="note" style="margin-top:24px">Connecté : ${esc(userEmail)} · données synchronisées. <button class="btn-ghost btn-sm" data-act="logout">Se déconnecter</button></p>`;
+  return h+`</div>`;
+}
+function formatOptions(sel){return Object.entries(FORMATS).map(([k,v])=>`<option value="${k}"${k===sel?" selected":""}>${esc(v)}</option>`).join("")}
+function renderCreate(){
+  return `<form class="panel stack" id="create-form">
+    <h2>Nouvelle animation</h2>
+    <label class="f">Nom de l'animation<input type="text" id="f-name" placeholder="Après-midi filles" required></label>
+    <div class="grid2">
+      <label class="f">Date<input type="date" id="f-date" value="${today()}"></label>
+      <label class="f">Type<select id="f-type"><option value="simple">Simple</option><option value="double">Double</option></select></label>
+    </div>
+    <label class="f">Format des matchs<select id="f-format">${formatOptions("tb10")}</select></label>
+    <label class="f">Matchs lancés en même temps<input type="number" id="f-live" min="1" max="20" value="6"></label>
+    <label class="f">Participants présents (un nom par ligne)<textarea id="f-players" placeholder="Léa&#10;Inès&#10;Manon"></textarea></label>
+    <p class="note">En format défis, tu ajouteras les défis le jour même et tu choisiras celui qui est en jeu.</p>
+    <div class="row"><button type="submit" class="btn-main">Créer l'animation</button><button type="button" class="btn-ghost" data-act="cancel-new">Annuler</button></div>
+  </form>`;
+}
+function renderAnim(a){
+  const tabs=[["matchs","Matchs"],["joueurs","Participants"]];
+  if(a.format==="defis")tabs.push(["defis","Défis"]);
+  tabs.push(["stats","Stats"],["reglages","Réglages"]);
+  if(!tabs.some(t=>t[0]===view.tab))view.tab="matchs";
+  let h=`<button class="btn-ghost" data-act="home">← TCM Animation</button>`;
+  h+=`<header class="top"><div style="min-width:0"><div class="eyebrow">${fmtDate(a.date)} · ${a.type==="double"?"Double":"Simple"} · ${a.live} matchs en même temps</div><h1>${esc(a.name)}</h1><div class="muted">${esc(FORMATS[a.format])}</div></div><div class="ballmark" aria-hidden="true"></div></header>`;
+  h+=`<nav class="tabs" role="tablist">${tabs.map(([k,v])=>`<button role="tab" aria-selected="${view.tab===k}" data-act="tab" data-tab="${k}">${v}</button>`).join("")}</nav>`;
+  if(view.tab==="matchs")h+=renderMatches(a);
+  if(view.tab==="joueurs")h+=renderPlayers(a);
+  if(view.tab==="defis")h+=renderDefis(a);
+  if(view.tab==="stats")h+=renderStats(a);
+  if(view.tab==="reglages")h+=renderSettings(a);
+  return h;
+}
+function defiSelect(a,sel,attrs){
+  return `<select ${attrs}><option value="">Sans défi</option>${a.defis.map(d=>`<option value="${d.id}"${d.id===sel?" selected":""}>${esc(d.text)}</option>`).join("")}</select>`;
+}
+function renderMatches(a){
+  const playing=byStatus(a,"playing"), planned=byStatus(a,"planned"), done=byStatus(a,"done");
+  const bench=available(a);
+  const t=tally(a,["planned","playing","done"]);
+  let h="";
+  if(a.format==="defis"){
+    h+=`<div class="defi-bar"><b>Défi en jeu</b>`;
+    h+=a.defis.length?defiSelect(a,a.currentDefi,`id="cur-defi" data-act="cur-defi" aria-label="Défi en jeu"`):`<span class="muted">Aucun défi inscrit.</span> <button class="btn-sm" data-act="tab" data-tab="defis">Ajouter un défi</button>`;
+    h+=`</div>`;
+  }
+  h+=`<div class="dur" role="group" aria-label="Durée des matchs"><b>Temps par match</b>${[null,5,6,7,10].map(v=>`<button aria-pressed="${a.duration===v}" data-act="dur" data-v="${v||""}">${v?v+"'":"Libre"}</button>`).join("")}</div>`;
+  if(!a.matches.length){
+    h+=`<div class="panel empty stack"><h2>Prêt à lancer ?</h2><p class="muted">${active(a).filter(p=>p.present).length} participants présents. Les ${a.live} premiers matchs partent tout de suite, et toutes les autres joueuses sont réparties dans les prochains matchs.</p><div><button class="btn-ball" data-act="start"${available(a).length<need(a)?" disabled":""}>Lancer l'animation</button></div></div>`;
+    return h+renderBench(a,bench,t);
+  }
+  h+=`<div class="bar"><div class="kpis"><div><b>${playing.length}</b><span>en jeu</span></div><div><b>${planned.length}</b><span>prévus</span></div><div><b>${bench.length}</b><span>au repos</span></div><div><b>${done.length}</b><span>terminés</span></div></div>`;
+  if(canRefill(a))h+=`<button class="btn-ball" data-act="refill">Compléter les matchs</button>`;
+  h+=`</div>`;
+  h+=`<section class="stack next-sec"><h2>À se préparer · prochains matchs</h2>`;
+  h+=planned.length?`<div class="list">${planned.map((m,i)=>renderNext(a,m,i)).join("")}</div>`:`<p class="muted">Tout le monde est sur le terrain. Les prochains matchs s'affichent ici dès que des joueuses reviennent.</p>`;
+  h+=`</section>`;
+  h+=`<section class="stack" style="margin-top:20px"><h2>En jeu</h2>`;
+  h+=playing.length?`<div class="courts">${playing.map(m=>renderLive(a,m)).join("")}</div>`:`<p class="muted">Aucun match en cours.</p>`;
+  h+=`</section>`;
+  h+=renderBench(a,bench,t);
+  h+=`<section class="stack" style="margin-top:20px"><h2>Matchs terminés</h2>`;
+  if(!done.length)h+=`<p class="muted">Les matchs apparaissent ici dès que les joueuses reviennent.</p>`;
+  else{
+    h+=`<div class="list">`;
+    done.slice().reverse().forEach(m=>{
+      const A=team(a,m.a),B=team(a,m.b);
+      const bits=[];
+      if(m.score)bits.push(esc(m.score));
+      if(m.defiId)bits.push(m.defiCount?`<span class="ok">Défi réussi</span> : ${esc(defiText(a,m.defiId))}`:`Défi non validé : ${esc(defiText(a,m.defiId))}`);
+      if(m.startedAt&&m.endedAt)bits.push(Math.round((m.endedAt-m.startedAt)/60000)+" min");
+      h+=`<div class="done-match stack" style="gap:8px"><div class="li"><div class="grow"><div class="who"><span class="${m.winner==="A"?"w":""}">${esc(A)}</span> <span class="muted">contre</span> <span class="${m.winner==="B"?"w":""}">${esc(B)}</span></div><div class="note">Match ${m.seq}${bits.length?" · "+bits.join(" · "):""}</div></div><button class="btn-sm" data-act="edit-match" data-id="${m.id}">${view.editMatch===m.id?"Fermer":"Modifier"}</button></div>`;
+      if(view.editMatch===m.id)h+=`<div class="panel stack" style="padding:12px">${renderResult(a,m)}<div><button class="btn-sm" data-act="undo-back" data-id="${m.id}">Remettre en jeu (retour coché par erreur)</button></div></div>`;
+      h+=`</div>`;
+    });
+    h+=`</div>`;
+  }
+  return h+`</section>`;
+}
+function renderBench(a,bench,t){
+  let h=`<section class="stack" style="margin-top:20px"><h2>Au repos</h2>`;
+  h+=bench.length?`<div class="bench">${bench.slice().sort((x,y)=>t.played[x.id]-t.played[y.id]).map(p=>`<span class="pill">${esc(p.name)} <b>${t.played[p.id]}</b></span>`).join("")}</div><p class="note">Le chiffre indique le nombre de matchs déjà tirés. Les moins servies passent en premier.</p>`:`<p class="muted">Tout le monde est en jeu ou dans un prochain match.</p>`;
+  const away=active(a).filter(p=>!p.present);
+  if(away.length)h+=`<h3 style="margin-top:6px">En pause</h3><div class="bench">${away.map(p=>`<button class="pill btn-sm" data-act="resume" data-id="${p.id}">${esc(p.name)} · Reprendre</button>`).join("")}</div>`;
+  return h+`</section>`;
+}
+function defiBlock(a,m,withOk){
+  if(a.format!=="defis")return"";
+  let h=`<div class="defi-tag"><span class="lbl">Défi du match</span>`;
+  if(m.defiId)h+=`<span class="txt">${esc(defiText(a,m.defiId))}</span>`;
+  if(a.defis.length)h+=defiSelect(a,m.defiId,`data-act="match-defi" data-id="${m.id}" aria-label="Changer le défi du match"`);
+  else h+=`<span class="note">Ajoute un défi dans l'onglet Défis.</span>`;
+
+  return h+`</div>`;
+}
+function defiCounter(m){
+  const n=m.a.length+m.b.length;
+  return `<div class="counter"><span class="lab">Défi réussi<br><span class="note">compte pour les ${n} joueuses, à chaque réussite</span></span><button data-act="defi-minus" data-id="${m.id}" aria-label="Retirer une réussite"${m.defiCount?"":" disabled"}>−</button><b>${m.defiCount||0}</b><button data-act="defi-plus" data-id="${m.id}" aria-label="Ajouter une réussite">+</button></div>`;
+}
+function renderLive(a,m){
+  const c=clock(a,m);
+  return `<article class="court${c.over?" over":""}" data-mid="${m.id}"><div class="court-head"><span class="court-num">Match ${m.seq}</span><span class="chip clock" data-start="${m.startedAt||""}">${c.text}</span></div>
+  <div class="surface"><div class="side">${esc(team(a,m.a))}</div><div class="net"><span>filet</span></div><div class="side">${esc(team(a,m.b))}</div></div>
+  ${defiBlock(a,m,true)}
+  ${m.defiId?`<button class="back-btn" data-act="defi-win" data-id="${m.id}"><i aria-hidden="true"></i>Défi réussi · fin du match</button><button data-act="back" data-id="${m.id}">Sont revenues sans réussir le défi</button>`:`<button class="back-btn" data-act="back" data-id="${m.id}"><i aria-hidden="true"></i>Sont revenues</button>`}</article>`;
+}
+function renderNext(a,m,i){
+  const d=a.format==="defis"&&m.defiId?`<div class="note">Défi : ${esc(defiText(a,m.defiId))}</div>`:"";
+  return `<div class="nx${i===0?" first":""}"><span class="rank">${i+1}</span><div class="grow" style="min-width:0"><div class="eyebrow">${i===0?"Part au prochain retour":i===1?"Ensuite":"Puis"} · match ${m.seq}</div><div class="next-line">${esc(team(a,m.a))}<span class="vs">contre</span>${esc(team(a,m.b))}</div>${d}</div><button class="btn-ghost btn-sm" data-act="redraw" data-id="${m.id}" aria-label="Refaire le tirage du match ${m.seq}">Retirer au sort</button></div>`;
+}
+function renderNextOld(a,m,i){
+  return `<article class="court next"><div class="court-head"><span class="court-num">Match ${m.seq}</span><span class="chip">${i===0?"Part au prochain retour":"Ensuite"}</span></div>
+  <div class="next-line">${esc(team(a,m.a))}<span class="vs">contre</span>${esc(team(a,m.b))}</div>
+  ${defiBlock(a,m,false)}
+  <div class="row"><button class="btn-sm" data-act="redraw" data-id="${m.id}">Refaire le tirage</button></div></article>`;
+}
+const mmss=ms=>{const s=Math.floor(Math.abs(ms)/1000);return Math.floor(s/60)+":"+String(s%60).padStart(2,"0")};
+function clock(a,m){
+  if(!m.startedAt)return{text:"En jeu",over:false};
+  const run=Date.now()-m.startedAt;
+  if(!a.duration)return{text:"Depuis "+elapsed(m.startedAt),over:false};
+  const left=a.duration*60000-run;
+  return left>0?{text:"Reste "+mmss(left),over:false}:{text:"Temps écoulé +"+mmss(left),over:true};
+}
+function elapsed(ts){return Math.max(0,Math.round((Date.now()-ts)/60000))+" min"}
+function renderResult(a,m){
+  const A=team(a,m.a),B=team(a,m.b);
+  if(a.format==="libre")return `<p class="note">Jeu libre : pas de résultat à saisir.</p>`;
+  let h=`<div class="result"><div class="eyebrow">Résultat (facultatif)</div>`;
+  h+=`<div class="seg"><button aria-pressed="${m.winner==="A"}" data-act="win" data-id="${m.id}" data-w="A">${esc(A)} gagne</button><button aria-pressed="${m.winner==="B"}" data-act="win" data-id="${m.id}" data-w="B">${esc(B)} gagne</button></div>`;
+  if(a.format==="libre")return h+`</div>`;
+  if(a.format!=="defis")h+=`<input type="text" id="score-${m.id}" data-act="score" data-id="${m.id}" value="${esc(m.score)}" placeholder="Score, ex. 6/4 3/6 10/8" aria-label="Score">`;
+  else{
+    h+=`<label class="f">Défi du match${defiSelect(a,m.defiId,`data-act="match-defi" data-id="${m.id}"`)}</label>`;
+    if(m.defiId)h+=`<label class="check"><input type="checkbox" data-act="defi-ok" data-id="${m.id}"${m.defiCount?" checked":""}> Défi réussi (validé pour toutes les joueuses du match)</label>`;
+  }
+  return h+`</div>`;
+}
+function renderPlayers(a){
+  const t=tally(a,["planned","playing","done"]);
+  const e=engaged(a);
+  let h=`<div class="stack"><div class="panel stack"><label class="f">Ajouter des participants (un nom par ligne)<textarea id="add-players" style="min-height:80px" placeholder="Nom"></textarea></label><div><button class="btn-main" data-act="add-players">Ajouter</button></div></div>`;
+  const act=active(a);
+  h+=`<p class="note"><b>Pause</b> : la joueuse ne sera plus tirée jusqu'à ce que tu la fasses reprendre. <b>Retirer</b> : elle quitte l'animation, ses matchs déjà joués restent dans les stats. ${act.filter(p=>p.present).length} en jeu sur ${act.length}.</p>`;
+  h+=`<div class="list">`;
+  act.slice().sort((x,y)=>x.name.localeCompare(y.name,"fr")).forEach(p=>{
+    let st=plural(t.played[p.id],"match");
+    if(!p.present)st+=" · <b>en pause</b>";
+    else if(isPlaying(a,p.id))st+=" · sur le terrain";
+    else if(e.has(p.id))st+=" · dans un prochain match";
+    const confirm=view.confirmRemove===p.id;
+    h+=`<div class="li"><div class="grow"><b>${esc(p.name)}</b><div class="note">${st}</div></div>`;
+    if(confirm)h+=`<div class="row"><button class="btn-danger btn-sm" data-act="remove-confirm" data-id="${p.id}">Retirer ${esc(p.name)}</button><button class="btn-ghost btn-sm" data-act="remove-cancel">Annuler</button></div>`;
+    else h+=`<div class="row">${p.present?`<button class="btn-sm" data-act="pause" data-id="${p.id}">Pause</button>`:`<button class="btn-ball btn-sm" data-act="resume" data-id="${p.id}">Reprendre</button>`}<button class="btn-ghost btn-sm" data-act="remove-player" data-id="${p.id}">Retirer</button></div>`;
+    h+=`</div>`;
+  });
+  h+=`</div>`;
+  const gone=a.players.filter(p=>p.removed);
+  if(gone.length)h+=`<h3>Retirées</h3><div class="bench">${gone.map(p=>`<button class="pill btn-sm" data-act="restore" data-id="${p.id}">${esc(p.name)} · Réintégrer</button>`).join("")}</div>`;
+  return h+`</div>`;
+}
+function renderDefis(a){
+  const t=tally(a,["playing","done"]);
+  let h=`<div class="stack"><div class="panel stack"><label class="f">Nouveau défi<input type="text" id="new-defi" placeholder="Ex. gagner un point au filet"></label><div><button class="btn-main" data-act="add-defi">Ajouter le défi</button></div><p class="note">Coche « En jeu » sur le défi à jouer : il s'affiche sur les prochains matchs. Dès qu'il est réussi, le match s'arrête : la réussite compte pour toutes les joueuses du match. Le même défi peut être réussi à nouveau dans un autre match.</p></div>`;
+  if(!a.defis.length)h+=`<p class="muted">Pas encore de défi pour cette animation.</p>`;
+  else h+=`<div class="list"><div class="li${!a.currentDefi?" current":""}"><div class="grow"><b>Sans défi</b><div class="note">Les prochains matchs se jouent sans défi.</div></div><label class="radio"><input type="radio" name="cur" data-act="cur-defi-radio" value=""${!a.currentDefi?" checked":""}> En jeu</label></div>${a.defis.map((d,i)=>{
+    const n=a.matches.filter(m=>m.defiId===d.id).reduce((s,m)=>s+(m.defiCount||0),0);
+    return `<div class="li${a.currentDefi===d.id?" current":""}"><div class="grow"><span class="eyebrow">Défi ${i+1} · ${plural(n,"réussite")}</span><div>${esc(d.text)}</div></div><label class="radio"><input type="radio" name="cur" data-act="cur-defi-radio" value="${d.id}"${a.currentDefi===d.id?" checked":""}> En jeu</label>${a.matches.some(m=>m.defiId===d.id)?"":`<button class="btn-ghost btn-sm" data-act="del-defi" data-id="${d.id}">Supprimer</button>`}</div>`}).join("")}</div>`;
+  if(a.defis.length)h+=`<p class="note">Le tableau des défis validés par joueuse est dans l'onglet Stats.</p>`;
+  return h+`</div>`;
+}
+function renderStats(a){
+  const t=tally(a,["playing","done"]);
+  const players=a.players.slice().sort((x,y)=>t.played[y.id]-t.played[x.id]||x.name.localeCompare(y.name,"fr"));
+  const isD=a.format==="defis", isL=a.format==="libre", dbl=a.type==="double";
+  const alpha=a.players.slice().sort((x,y)=>x.name.localeCompare(y.name,"fr"));
+  let h=`<div class="stack"><p class="note">Matchs en jeu ou terminés. Touche un nom pour voir contre qui elle a joué.</p>`;
+  h+=`<div class="tbl-wrap"><table><thead><tr><th>Nom</th><th class="num">Matchs</th>${isD?`<th class="num">Défis</th>`:isL?"":`<th class="num">Victoires</th>`}<th class="num">Adversaires</th></tr></thead><tbody>`;
+  players.forEach(p=>{
+    const opp=players.filter(q=>q.id!==p.id&&t.met[pairKey(p.id,q.id)]);
+    const open=view.openPlayer===p.id;
+    h+=`<tr class="click${open?" open":""}" data-act="open-player" data-id="${p.id}"><td><b>${esc(p.name)}</b>${p.removed?` <span class="muted">(retirée)</span>`:p.present?"":` <span class="muted">(pause)</span>`}</td><td class="num">${t.played[p.id]}</td>${isL?"":`<td class="num">${isD?t.defis[p.id]:t.wins[p.id]}</td>`}<td class="num">${opp.length}</td></tr>`;
+    if(open){
+      const vs=opp.map(q=>({n:q.name,c:t.met[pairKey(p.id,q.id)]})).sort((x,y)=>y.c-x.c);
+      let det=`<b>Contre :</b> ${vs.length?vs.map(v=>esc(v.n)+" ×"+v.c).join(", "):"personne pour l'instant"}`;
+      if(dbl){const ws=players.filter(q=>q.id!==p.id&&t.partner[pairKey(p.id,q.id)]).map(q=>esc(q.name)+" ×"+t.partner[pairKey(p.id,q.id)]);det+=`<br><b>Avec :</b> ${ws.length?ws.join(", "):"personne pour l'instant"}`}
+      const never=players.filter(q=>q.id!==p.id&&q.present&&!q.removed&&!t.met[pairKey(p.id,q.id)]).map(q=>esc(q.name));
+      if(never.length)det+=`<br><span class="muted">Pas encore rencontrées : ${never.join(", ")}</span>`;
+      h+=`<tr class="detail"><td colspan="${isL?3:4}">${det}</td></tr>`;
+    }
+  });
+  h+=`</tbody></table></div>`;
+  if(isD){
+    h+=`<h2 style="margin-top:8px">Défis validés</h2><p class="note">Nombre de fois où chaque joueuse a réussi chaque défi.</p>`;
+    if(!a.defis.length)h+=`<p class="muted">Aucun défi inscrit pour l'instant.</p>`;
+    else{
+      h+=`<div class="tbl-wrap"><table class="matrix"><thead><tr><th class="rowh"></th>${a.defis.map((d,i)=>`<th class="v" title="${esc(d.text)}">${i+1}. ${esc(d.text.length>28?d.text.slice(0,27)+"…":d.text)}</th>`).join("")}<th class="v">Total</th></tr></thead><tbody>`;
+      alpha.forEach(p=>{
+        h+=`<tr><th class="rowh">${esc(p.name)}</th>${a.defis.map(d=>{const c=t.defisBy[p.id][d.id]||0;return`<td class="${c===0?"z":c===1?"g1":"g2"}">${c||"·"}</td>`}).join("")}<td class="tot">${t.defis[p.id]}</td></tr>`;
+      });
+      h+=`</tbody></table></div>`;
+    }
+  }
+  h+=`<h2 style="margin-top:8px">Qui a joué qui</h2><p class="note">Nombre de fois où deux joueuses se sont affrontées.</p>`;
+  h+=`<div class="tbl-wrap"><table class="matrix"><thead><tr><th class="rowh"></th>${alpha.map(q=>`<th class="v">${esc(q.name)}</th>`).join("")}</tr></thead><tbody>`;
+  alpha.forEach(p=>{
+    h+=`<tr><th class="rowh">${esc(p.name)}</th>${alpha.map(q=>{if(q.id===p.id)return`<td class="self"></td>`;const c=t.met[pairKey(p.id,q.id)]||0;return`<td class="${c===0?"z":c===1?"h1":"h2"}">${c||"·"}</td>`}).join("")}</tr>`;
+  });
+  return h+`</tbody></table></div></div>`;
+}
+function renderSettings(a){
+  return `<form class="panel stack" id="settings-form">
+    <label class="f">Nom<input type="text" id="s-name" value="${esc(a.name)}"></label>
+    <div class="grid2"><label class="f">Date<input type="date" id="s-date" value="${esc(a.date)}"></label><label class="f">Type<select id="s-type"><option value="simple"${a.type==="simple"?" selected":""}>Simple</option><option value="double"${a.type==="double"?" selected":""}>Double</option></select></label></div>
+    <label class="f">Format<select id="s-format">${formatOptions(a.format)}</select></label>
+    <label class="f">Temps par match<select id="s-dur">${[null,5,6,7,10].map(v=>`<option value="${v||""}"${a.duration===v?" selected":""}>${v?v+" minutes":"Libre (pas de chrono)"}</option>`).join("")}</select></label>
+    <label class="f">Matchs en même temps<input type="number" id="s-live" min="1" max="20" value="${a.live}"></label>
+    <p class="note">Les changements s'appliquent aux prochains tirages.</p>
+    <div><button type="submit" class="btn-main">Enregistrer</button></div>
+  </form>
+  <div class="panel stack" style="margin-top:16px"><h3>Supprimer l'animation</h3><p class="note">Efface les participants, les matchs et les stats de cette animation.</p><div class="row">${view.confirmDel===a.id?`<button class="btn-danger" data-act="delete-confirm">Oui, supprimer définitivement</button><button class="btn-ghost" data-act="delete-cancel">Annuler</button>`:`<button class="btn-danger" data-act="delete">Supprimer</button>`}</div></div>`;
+}
+
+/* ---------- events ---------- */
+const parseNames=txt=>txt.split(/\n|,|;/).map(s=>s.trim()).filter(Boolean);
+const clampInt=(v,lo,hi,def)=>{const n=parseInt(v,10);return isNaN(n)?def:Math.max(lo,Math.min(hi,n))};
+function setCurrentDefi(a,id){
+  a.currentDefi=id||null;
+  // the chosen défi goes on the upcoming matches, and on live matches that have none yet
+  a.matches.forEach(m=>{if(m.status==="planned"||(m.status==="playing"&&!m.defiId)){m.defiId=a.currentDefi;m.defiCount=0}});
+}
+$app.addEventListener("submit",e=>{
+  e.preventDefault();
+  if(e.target.id==="create-form"){
+    const name=document.getElementById("f-name").value.trim()||"Animation";
+    const names=parseNames(document.getElementById("f-players").value);
+    const a=newAnimation({name,date:document.getElementById("f-date").value||today(),type:document.getElementById("f-type").value,format:document.getElementById("f-format").value,
+      live:clampInt(document.getElementById("f-live").value,1,20,6),queue:0,names});
+    view.creating=false;view.animId=a.id;view.tab=names.length?(a.format==="defis"?"defis":"matchs"):"joueurs";commit(a);
+  }
+  if(e.target.id==="settings-form"){
+    const a=anim();
+    a.name=document.getElementById("s-name").value.trim()||a.name;
+    a.date=document.getElementById("s-date").value||a.date;
+    a.type=document.getElementById("s-type").value;a.format=document.getElementById("s-format").value;
+    a.live=clampInt(document.getElementById("s-live").value,1,20,a.live);
+    {const v=document.getElementById("s-dur").value;a.duration=v?+v:null}
+    commit(a);toast("Réglages enregistrés");
+  }
+});
+$app.addEventListener("click",e=>{
+  const el=e.target.closest("[data-act]");if(!el)return;
+  if(el.tagName==="INPUT"||el.tagName==="SELECT")return;
+  const act=el.dataset.act;
+  const a=anim();
+  const findM=()=>a.matches.find(m=>m.id===el.dataset.id);
+  switch(act){
+    case "new":view.creating=true;render();setTimeout(()=>{const f=document.getElementById("f-name");f&&f.focus()},0);break;
+    case "cancel-new":view.creating=false;render();break;
+    case "example":{
+      const names=["Léa","Chloé","Inès","Manon","Camille","Jade","Louise","Zoé","Lina","Emma","Alice","Rose","Anna","Mila","Lou","Nina","Clara","Sarah","Julia","Eva"];
+      const x=newAnimation({name:"Exemple – Après-midi filles",date:today(),type:"simple",format:"defis",live:6,queue:2,names});
+      x.defis=[{id:uid(),text:"Gagner un point au filet"},{id:uid(),text:"Faire 5 échanges de suite"},{id:uid(),text:"Servir deux fois dans le carré"}];
+      x.currentDefi=x.defis[0].id;
+      view.animId=x.id;view.tab="matchs";commit(x);break;}
+    case "open":{const o=norm(store.animations[el.dataset.id]);if(o.matches.length&&byStatus(o,"playing").length&&available(o).length>=need(o)){refill(o);o.updatedAt=Date.now();saveLocal();queueDb(o.id)}}
+      view.animId=el.dataset.id;view.tab="matchs";view.editMatch=null;view.openPlayer=null;render();window.scrollTo(0,0);break;
+    case "home":view.animId=null;render();window.scrollTo(0,0);break;
+    case "tab":view.tab=el.dataset.tab;render();break;
+    case "start":case "refill":{refill(a);commit(a);const p=byStatus(a,"playing").length;if(p<a.live)toast(`${p} matchs en jeu : pas assez de joueuses pour en lancer plus.`);break;}
+    case "back":case "defi-win":{
+      const m=findM();m.status="done";m.endedAt=Date.now();m.defiCount=act==="defi-win"?1:0;
+      const before=byStatus(a,"planned")[0];
+      refill(a);commit(a);
+      if(before&&before.status==="playing")toast(`Match ${before.seq} part : ${team(a,before.a)} contre ${team(a,before.b)}`);
+      break;}
+    case "undo-back":{const m=findM();m.status="playing";m.endedAt=null;view.editMatch=null;commit(a);toast("Match remis en jeu");break;}
+    case "redraw":{const m=findM();a.matches=a.matches.filter(x=>x.id!==m.id);const keep=m.seq;if(addMatch(a,"planned")){const n=a.matches[a.matches.length-1];a.seq--;n.seq=keep;n.defiId=m.defiId}else toast("Pas assez de monde au repos pour refaire le tirage.");commit(a);break;}
+    case "dur":{a.duration=el.dataset.v?+el.dataset.v:null;commit(a);toast(a.duration?`Matchs de ${a.duration} minutes`:"Matchs sans limite de temps");break;}
+    case "defi-plus":{const m=findM();m.defiCount=(m.defiCount||0)+1;commit(a);break;}
+    case "defi-minus":{const m=findM();m.defiCount=Math.max(0,(m.defiCount||0)-1);commit(a);break;}
+    case "win":{const m=findM();m.winner=m.winner===el.dataset.w?null:el.dataset.w;commit(a);break;}
+    case "edit-match":view.editMatch=view.editMatch===el.dataset.id?null:el.dataset.id;render();break;
+    case "add-players":{const names=parseNames(document.getElementById("add-players").value);if(!names.length)return;names.forEach(n=>a.players.push({id:uid(),name:n,present:true}));commit(a);toast(names.length+" ajoutée(s)");break;}
+    case "pause":case "remove-confirm":{
+      const p=a.players.find(x=>x.id===el.dataset.id);
+      if(act==="pause")p.present=false;
+      else{view.confirmRemove=null;if(a.matches.some(m=>m.a.concat(m.b).includes(p.id)))p.removed=true;else a.players=a.players.filter(x=>x.id!==p.id)}
+      const n=dropFromPlanned(a,p.id);
+      const live=isPlaying(a,p.id);
+      commit(a);
+      toast(`${p.name} ${act==="pause"?"en pause":"retirée"}${n?" · prochain match retiré":""}${live?" · son match en cours continue":""}`);
+      break;}
+    case "resume":case "restore":{const p=a.players.find(x=>x.id===el.dataset.id);p.present=true;p.removed=false;if(a.matches.length)refill(a);commit(a);toast(p.name+" reprend les tirages");break;}
+    case "remove-player":view.confirmRemove=el.dataset.id;render();break;
+    case "remove-cancel":view.confirmRemove=null;render();break;
+    case "add-defi":{
+      const v=document.getElementById("new-defi").value.trim();if(!v)return;
+      const d={id:uid(),text:v};a.defis.push(d);
+      if(!a.currentDefi)setCurrentDefi(a,d.id);
+      commit(a);toast(a.currentDefi===d.id?"Défi ajouté et mis en jeu":"Défi ajouté. Coche « En jeu » pour le jouer.");
+      setTimeout(()=>{const f=document.getElementById("new-defi");f&&f.focus()},0);break;}
+    case "del-defi":a.defis=a.defis.filter(d=>d.id!==el.dataset.id);if(a.currentDefi===el.dataset.id)setCurrentDefi(a,null);commit(a);break;
+    case "open-player":view.openPlayer=view.openPlayer===el.dataset.id?null:el.dataset.id;render();break;
+    case "delete":view.confirmDel=a.id;render();break;
+    case "delete-cancel":view.confirmDel=null;render();break;
+    case "delete-confirm":{const id=a.id;delete store.animations[id];saveLocal();queueDb(id);view.animId=null;view.confirmDel=null;render();toast("Animation supprimée");break;}
+  }
+});
+$app.addEventListener("change",e=>{
+  const el=e.target;const act=el.dataset&&el.dataset.act;if(!act)return;
+  const a=anim();if(!a)return;
+  const m=a.matches.find(x=>x.id===el.dataset.id);
+  if(act==="score"){m.score=el.value.trim();commit(a)}
+  if(act==="defi-ok"){m.defiCount=el.checked?1:0;commit(a)}
+  if(act==="match-defi"){m.defiId=el.value||null;m.defiCount=0;commit(a)}
+  if(act==="cur-defi"||act==="cur-defi-radio"){setCurrentDefi(a,el.value);commit(a);toast(a.currentDefi?"Défi en jeu : "+defiText(a,a.currentDefi):"Plus de défi en jeu")}
+  if(act==="present"){const p=a.players.find(x=>x.id===el.dataset.id);p.present=el.checked;commit(a)}
+});
+$app.addEventListener("keydown",e=>{
+  if(e.key==="Enter"&&e.target.id==="new-defi"){e.preventDefault();document.querySelector('[data-act="add-defi"]').click()}
+});
+let audio=null;const rung=new Set();
+document.addEventListener("pointerdown",()=>{if(!audio){try{audio=new (window.AudioContext||window.webkitAudioContext)()}catch(e){}}},{once:false});
+function beep(){if(!audio)return;try{[0,0.35,0.7].forEach(t=>{const o=audio.createOscillator(),g=audio.createGain();o.frequency.value=880;g.gain.setValueAtTime(0.25,audio.currentTime+t);g.gain.exponentialRampToValueAtTime(0.001,audio.currentTime+t+0.25);o.connect(g).connect(audio.destination);o.start(audio.currentTime+t);o.stop(audio.currentTime+t+0.3)})}catch(e){}}
+setInterval(()=>{
+  const a=view.animId&&store.animations[view.animId];if(!a)return;
+  document.querySelectorAll(".court[data-mid]").forEach(card=>{
+    const m=a.matches.find(x=>x.id===card.dataset.mid);if(!m||m.status!=="playing")return;
+    const c=clock(a,m);card.querySelector(".clock").textContent=c.text;card.classList.toggle("over",c.over);
+    if(c.over&&!rung.has(m.id)){rung.add(m.id);beep();try{navigator.vibrate&&navigator.vibrate([300,150,300])}catch(e){}}
+  });
+},1000);
+
+loadLocal();render();connectDb();
+})();
+</script>
+
+<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}</script>
+</body></html>
