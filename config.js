@@ -3,7 +3,7 @@
 // la sécurité vient de la connexion obligatoire et des règles définies dans supabase.sql.
 window.TCM_CONFIG = {
   supabaseUrl: "https://mtrzxiwhwuxxwfvjvjqm.supabase.co",
-  supabaseAnonKey: "# TCM Animation
+  supabaseAnonKey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im10cnp4aXdod3V4eHdmdmp2anFtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI1NjM0OTcsImV4cCI6MjEwODEzOTQ5N30.VN2rPCM7diqBIiqng-f7v0A3b4vHaURjbfgOJFyt9V0
 
 Appli d'animations du club : rotations de matchs, défis, chrono et stats.
 Données enregistrées dans Supabase (synchronisées entre téléphones), site hébergé sur Vercel depuis GitHub.
