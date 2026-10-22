@@ -316,73 +316,112 @@ function isPlaying(a,pid){return a.matches.some(m=>m.status==="playing"&&m.a.con
 function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
 function combos(arr,k){const out=[];(function rec(start,cur){if(cur.length===k){out.push(cur.slice());return}for(let i=start;i<arr.length;i++){cur.push(arr[i]);rec(i+1,cur);cur.pop()}})(0,[]);return out}
 
-/* Draw one match: start from a player who has played least, pair her with others who have also played least, avoiding repeat meetings */
-function drawMatch(a){
+/* ---------- draw ----------
+   Rules, in order:
+   1. Never: a player who just came back is never put in the match that starts next: at least one other match must come back first.
+   2. Aim for 2 launches of rest or more, and for the players who have played least and waited longest.
+   3. Avoid meeting the same opponent again, and above all an opponent from one of the last 2 matches.
+   The upcoming matches stay fixed once shown; new ones are added at the end of the list. */
+function launch(a,m){a.launches=(a.launches||0)+1;m.launch=a.launches;m.status="playing";m.startedAt=Date.now()}
+function restInfo(a){
+  const lastBack={},recent={},recentPartner={};
+  const hist=a.matches.filter(m=>m.status==="done"||m.status==="playing").sort((x,y)=>(x.launch||x.seq)-(y.launch||y.seq));
+  const lastTwo={};
+  hist.forEach(m=>{
+    m.a.concat(m.b).forEach(id=>{(lastTwo[id]=lastTwo[id]||[]).push(m);if(lastTwo[id].length>2)lastTwo[id].shift()});
+    if(m.status==="done"&&m.backAt!=null)m.a.concat(m.b).forEach(id=>{lastBack[id]=Math.max(lastBack[id]??-1e9,m.backAt)});
+  });
+  Object.entries(lastTwo).forEach(([id,ms])=>{
+    recent[id]=new Set();recentPartner[id]=new Set();
+    ms.forEach(m=>{const mine=m.a.includes(id)?m.a:m.b, other=m.a.includes(id)?m.b:m.a;
+      other.forEach(o=>recent[id].add(o));mine.forEach(o=>{if(o!==id)recentPartner[id].add(o)})});
+  });
+  return {lastBack,recent,recentPartner};
+}
+/* pos = how many matches will start before this one */
+function drawMatch(a,pos,avoid){
   const k=need(a);
   const t=tally(a,["planned","playing","done"]);
-  let pool=shuffle(available(a).map(p=>p.id));
+  const r=restInfo(a);
+  const L=a.backs||0;
+  const gap=id=>{const b=r.lastBack[id];return b==null?99:L+pos-b};
+  let pool=shuffle(available(a).map(p=>p.id)).filter(id=>gap(id)>=1);
   if(pool.length<k)return null;
-  pool.sort((x,y)=>t.played[x]-t.played[y]);
+  const wait=id=>r.lastBack[id]==null?-1e9:r.lastBack[id];
+  pool.sort((x,y)=>t.played[x]-t.played[y]||wait(x)-wait(y));
   const min=t.played[pool[0]];
   let cands=pool.filter(id=>t.played[id]<=min+1);
-  if(cands.length<k)cands=pool.slice(0,Math.max(k,8));
+  if(cands.length<Math.max(k,6))cands=pool.slice(0,Math.max(k,8));
   cands=cands.slice(0,12);
-  const first=cands[0];const rest=cands.slice(1);
+  const first=cands[0],rest=cands.slice(1);
   const met=(x,y)=>t.met[pairKey(x,y)]||0, par=(x,y)=>t.partner[pairKey(x,y)]||0;
-  let best=null,bestCost=Infinity;
+  const isRecent=(x,y)=>(r.recent[x]&&r.recent[x].has(y))||(r.recent[y]&&r.recent[y].has(x));
+  const isRecentP=(x,y)=>(r.recentPartner[x]&&r.recentPartner[x].has(y));
+  let best=null;
   combos(rest,k-1).forEach(c=>{
-    const load=c.reduce((s,id)=>s+(t.played[id]-min),0)*2;
+    const all=[first].concat(c);
+    let base=c.reduce((s,id)=>s+(t.played[id]-min),0)*3;
+    all.forEach(id=>{if(gap(id)<2)base+=4});
     let splits;
     if(k===2)splits=[[[first],[c[0]]]];
     else{const [x,y,z]=c;splits=[[[first,x],[y,z]],[[first,y],[x,z]],[[first,z],[x,y]]]}
     splits.forEach(([A,B])=>{
-      let rep=0;A.forEach(p=>B.forEach(q=>rep+=met(p,q)*5));
-      if(A.length===2)rep+=par(A[0],A[1])*4+par(B[0],B[1])*4;
-      const cost=load+rep+Math.random()*0.9;
-      if(cost<bestCost){bestCost=cost;best={a:A,b:B}}
+      let cost=base,rec=false;
+      A.forEach(p=>B.forEach(q=>{cost+=met(p,q)*8;if(isRecent(p,q)){cost+=30;rec=true}if(avoid&&avoid.has(pairKey(p,q)))cost+=50}));
+      [A,B].forEach(tm=>{if(tm.length===2){cost+=par(tm[0],tm[1])*5;if(isRecentP(tm[0],tm[1]))cost+=15}});
+      cost+=Math.random()*0.9;
+      if(!best||cost<best.cost)best={a:A,b:B,cost,recent:rec};
     });
   });
   return best;
 }
-function addMatch(a,status){
-  const d=drawMatch(a);if(!d)return false;
+function makeMatch(a,d,status){
   a.seq=(a.seq||0)+1;
-  a.matches.push({id:uid(),a:d.a,b:d.b,status,seq:a.seq,winner:null,score:"",defiId:a.format==="defis"?(a.currentDefi||null):null,defiCount:0,startedAt:status==="playing"?Date.now():null,endedAt:null});
-  return true;
+  const m={id:uid(),a:d.a,b:d.b,status:"planned",seq:a.seq,winner:null,score:"",defiId:a.format==="defis"?(a.currentDefi||null):null,defiCount:0,startedAt:null,endedAt:null};
+  a.matches.push(m);
+  if(status==="playing")launch(a,m);
+  return m;
 }
-/* Keep `live` matches on court (taking the next planned match first) and at least `queue` matches planned */
-function refill(a){
+function addMatch(a,status){const pos=status==="playing"?0:byStatus(a,"planned").length;const d=drawMatch(a,pos);if(!d)return false;makeMatch(a,d,status);return true}
+/* Keep `live` matches on court, then plan matches for the resting players. `back` = the match that just came back. */
+function refill(a,back){
+  if(back){a.backs=(a.backs||0)+1;back.backAt=a.backs}
   let guard=0;
   while(byStatus(a,"playing").length<a.live&&guard++<50){
     const nx=byStatus(a,"planned")[0];
-    if(nx){nx.status="playing";nx.startedAt=Date.now();continue}
+    if(nx){launch(a,nx);continue}
     if(!addMatch(a,"playing"))break;
   }
   planQueue(a);
 }
-/* Put every resting player into an upcoming match. The next match to go stays fixed; the others are redrawn
-   together with whoever just came back, keeping the draw with the fewest repeat meetings out of several tries. */
 function planQueue(a){
-  const locked=byStatus(a,"planned")[0];
-  const base=a.matches.filter(m=>m.status!=="planned"||m===locked);
-  const seq0=a.seq||0;
-  const t=tally(a,["playing","done"]);
-  let best=null,bestCost=Infinity;
-  for(let i=0;i<40;i++){
-    a.matches=base.slice();a.seq=seq0;
-    const added=[];let guard=0;
-    while(guard++<30&&addMatch(a,"planned"))added.push(a.matches[a.matches.length-1]);
-    let cost=0;
-    added.forEach(m=>{
-      m.a.forEach(x=>m.b.forEach(y=>cost+=(t.met[pairKey(x,y)]||0)*5));
-      [m.a,m.b].forEach(tm=>{if(tm.length===2)cost+=(t.partner[pairKey(tm[0],tm[1])]||0)*4});
-    });
-    if(cost<bestCost){bestCost=cost;best={matches:a.matches.slice(),seq:a.seq}}
-    if(cost===0)break;
+  let guard=0;
+  while(guard++<30){
+    const planned=byStatus(a,"planned").length;
+    const d=drawMatch(a,planned);
+    if(!d)break;
+    if(d.recent&&planned>=2)break; // better to wait for the next return than to replay a recent opponent
+    makeMatch(a,d,"planned");
   }
-  a.matches=best.matches;a.seq=best.seq;
 }
-const canRefill=a=>(byStatus(a,"playing").length<a.live||available(a).length>=need(a))&&available(a).length>=need(a);
+function redrawMatch(a,m){
+  const planned=byStatus(a,"planned");const pos=planned.indexOf(m);
+  a.matches=a.matches.filter(x=>x!==m);
+  const avoid=new Set();m.a.forEach(p=>m.b.forEach(q=>avoid.add(pairKey(p,q))));
+  const d=drawMatch(a,pos,avoid);
+  if(!d){a.matches.push(m);return false}
+  const n=makeMatch(a,d,"planned");a.seq--;n.seq=m.seq;n.defiId=m.defiId;
+  return true;
+}
+/* With too few players resting, the same few end up facing each other again: suggest fewer matches at once */
+function liveAdvice(a){
+  const n=active(a).filter(p=>p.present).length, k=need(a);
+  const rec=Math.max(1,Math.floor(n/k)-3);
+  if(n<k*2||a.live<=rec)return"";
+  const resting=n-a.live*k;
+  return `<div class="panel stack" style="border-color:var(--ball);margin-bottom:12px"><b>Pas assez de joueuses au repos pour bien mélanger</b><div class="note">Avec ${n} joueuses présentes et ${a.live} matchs en même temps, ${resting>0?"seules "+resting+" joueuses sont":"personne n'est"} au repos : elles se retrouvent souvent entre elles au match suivant. Avec ${rec} match${rec>1?"s":""} en même temps, chacune se repose 1 à 2 matchs et change d'adversaire.</div><div><button class="btn-sm btn-ball" data-act="set-live" data-v="${rec}">Passer à ${rec} match${rec>1?"s":""} en même temps</button></div></div>`;
+}
+const canRefill=a=>available(a).length>=need(a)&&(byStatus(a,"playing").length<a.live||!!drawMatch(a,byStatus(a,"planned").length));
 
 /* ---------- rendering ---------- */
 function render(){
@@ -451,6 +490,7 @@ function renderMatches(a){
     h+=`</div>`;
   }
   h+=`<div class="dur" role="group" aria-label="Durée des matchs"><b>Temps par match</b>${[null,5,6,7,10].map(v=>`<button aria-pressed="${a.duration===v}" data-act="dur" data-v="${v||""}">${v?v+"'":"Libre"}</button>`).join("")}</div>`;
+  h+=liveAdvice(a);
   if(!a.matches.length){
     h+=`<div class="panel empty stack"><h2>Prêt à lancer ?</h2><p class="muted">${active(a).filter(p=>p.present).length} participants présents. Les ${a.live} premiers matchs partent tout de suite, et toutes les autres joueuses sont réparties dans les prochains matchs.</p><div><button class="btn-ball" data-act="start"${available(a).length<need(a)?" disabled":""}>Lancer l'animation</button></div></div>`;
     return h+renderBench(a,bench,t);
@@ -677,11 +717,12 @@ $app.addEventListener("click",e=>{
     case "back":case "defi-win":{
       const m=findM();m.status="done";m.endedAt=Date.now();m.defiCount=act==="defi-win"?1:0;
       const before=byStatus(a,"planned")[0];
-      refill(a);commit(a);
+      refill(a,m);commit(a);
       if(before&&before.status==="playing")toast(`Match ${before.seq} part : ${team(a,before.a)} contre ${team(a,before.b)}`);
       break;}
-    case "undo-back":{const m=findM();m.status="playing";m.endedAt=null;view.editMatch=null;commit(a);toast("Match remis en jeu");break;}
-    case "redraw":{const m=findM();a.matches=a.matches.filter(x=>x.id!==m.id);const keep=m.seq;if(addMatch(a,"planned")){const n=a.matches[a.matches.length-1];a.seq--;n.seq=keep;n.defiId=m.defiId}else toast("Pas assez de monde au repos pour refaire le tirage.");commit(a);break;}
+    case "undo-back":{const m=findM();m.status="playing";m.endedAt=null;m.backAt=null;view.editMatch=null;commit(a);toast("Match remis en jeu");break;}
+    case "redraw":{const m=findM();if(!redrawMatch(a,m))toast("Pas d'autre tirage possible pour l'instant.");commit(a);break;}
+    case "set-live":{a.live=+el.dataset.v;refill(a);commit(a);toast(`${a.live} matchs en même temps : les prochains retours ne relancent pas de match tant qu'on n'est pas redescendu à ${a.live}.`);break;}
     case "dur":{a.duration=el.dataset.v?+el.dataset.v:null;commit(a);toast(a.duration?`Matchs de ${a.duration} minutes`:"Matchs sans limite de temps");break;}
     case "defi-plus":{const m=findM();m.defiCount=(m.defiCount||0)+1;commit(a);break;}
     case "defi-minus":{const m=findM();m.defiCount=Math.max(0,(m.defiCount||0)-1);commit(a);break;}
